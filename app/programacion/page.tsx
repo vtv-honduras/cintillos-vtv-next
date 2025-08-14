@@ -8,17 +8,12 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Trash2, Plus, FileText, Download, Users, Tag, BarChart3, RefreshCw } from "lucide-react"
+import { Trash2, Plus, FileText, Download, Users, Tag, BarChart3, RefreshCw, Loader2 } from "lucide-react"
 import { RouteGuard } from "@/components/route-guard"
 import { Navbar } from "@/components/navbar"
 import ConfirmationModal from "@/components/confirmation-modal"
 import RenovarClienteModal from "@/components/renovar-cliente-modal"
-import {
-  clientesService,
-  tiposMencionService,
-  mencionesService,
-  inicializarDatosPorDefecto,
-} from "@/lib/firebase-services"
+import { clientesService, tiposMencionService, inicializarDatosPorDefecto, mencionesService } from "@/lib/firebase-services"
 import type { Mencion, Cliente, TipoMencion } from "@/lib/data"
 
 export default function ProgramacionPage() {
@@ -26,6 +21,9 @@ export default function ProgramacionPage() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [tipos, setTipos] = useState<TipoMencion[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingTipos, setLoadingTipos] = useState(false)
+  const [loadingClientes, setLoadingClientes] = useState(false)
+  const [loadingMenciones, setLoadingMenciones] = useState(false)
   const [filtroFecha, setFiltroFecha] = useState("")
   const [filtroTipo, setFiltroTipo] = useState("")
   const [filtroCliente, setFiltroCliente] = useState("")
@@ -48,27 +46,20 @@ export default function ProgramacionPage() {
   const cargarDatos = async () => {
     try {
       setLoading(true)
-      // Inicializar datos por defecto si es necesario
       await inicializarDatosPorDefecto()
-
-      // Cargar datos desde Firebase en lugar de localStorage
       const [mencionesData, clientesData, tiposData] = await Promise.all([
         mencionesService.getAll(),
         clientesService.getAll(),
         tiposMencionService.getAll(),
       ])
-
       setMenciones(mencionesData)
       setClientes(clientesData)
       setTipos(tiposData)
-
-      // Establecer filtro de fecha por defecto al mes actual
       const fechaActual = new Date()
       const mesActual = `${fechaActual.getFullYear()}-${String(fechaActual.getMonth() + 1).padStart(2, "0")}`
       setFiltroFecha(mesActual)
     } catch (error) {
       console.error("Error cargando datos:", error)
-      // Fallback a localStorage si Firebase falla
       const mencionesLS = localStorage.getItem("menciones")
       const clientesLS = localStorage.getItem("clientes")
       const tiposLS = localStorage.getItem("tipos")
@@ -253,19 +244,15 @@ export default function ProgramacionPage() {
 
   if (loading) {
     return (
-      <RouteGuard allowedRoles={["programacion"]}>
         <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-vtv-blue mx-auto mb-4"></div>
-            <p className="text-gray-600">Cargando datos...</p>
+          <Loader2 className="h-6 w-6 animate-spin"/>
           </div>
         </div>
-      </RouteGuard>
     )
   }
 
   return (
-    <RouteGuard allowedRoles={["programacion"]}>
       <div className="min-h-screen bg-gray-50 pt-16">
         <Navbar title="Panel de Programación" />
         <div className="container mx-auto p-4 sm:p-6 space-y-6">
@@ -766,6 +753,5 @@ export default function ProgramacionPage() {
           />
         </div>
       </div>
-    </RouteGuard>
   )
 }

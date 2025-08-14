@@ -1,9 +1,8 @@
-// app/api/usuarios/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, db } from "@/lib/firebaseAdmin";
 
 type PostBody = {
-  username?: string;          // opcional si no lo usas en Auth
   password: string;
   role: string;
   name: string;
@@ -12,7 +11,7 @@ type PostBody = {
 };
 
 type PutBody = {
-  id: string;                 // uid de Firebase
+  id: string;           
   activo?: boolean;
   role?: string;
   name?: string;

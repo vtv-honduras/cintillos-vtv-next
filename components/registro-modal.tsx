@@ -9,8 +9,19 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ConfirmationModal } from "@/components/confirmation-modal"
 import { Plus, Calendar, Clock, X } from "lucide-react"
-import type { TipoMencion, Canal, Cliente } from "@/lib/data"
-import { clientesService, tiposMencionService, canalesService, mencionesService } from "@/lib/firebase-services"
+import {
+  getStoredData,
+  setStoredData,
+  generateId,
+  getClientesActivos,
+  TIPOS_MENCIONES_INICIALES,
+  CANALES_INICIALES,
+  CLIENTES_INICIALES,
+  type Mencion,
+  type TipoMencion,
+  type Canal,
+  type Cliente,
+} from "@/lib/data"
 
 interface RegistroModalProps {
   isOpen: boolean
@@ -23,7 +34,6 @@ export function RegistroModal({ isOpen, onClose, onRegistroExitoso }: RegistroMo
   const [canales, setCanales] = useState<Canal[]>([])
   const [clientesActivos, setClientesActivos] = useState<string[]>([])
   const [clientesFiltrados, setClientesFiltrados] = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
 
   const [formulario, setFormulario] = useState({
     cliente: "",
@@ -44,47 +54,17 @@ export function RegistroModal({ isOpen, onClose, onRegistroExitoso }: RegistroMo
 
   useEffect(() => {
     if (isOpen) {
-      cargarDatos()
-    }
-  }, [isOpen])
+      setTiposMenciones(getStoredData("tipos_menciones", TIPOS_MENCIONES_INICIALES))
+      setCanales(getStoredData("canales", CANALES_INICIALES))
 
-  const cargarDatos = async () => {
-    try {
-      setLoading(true)
-      const [tiposData, canalesData, clientesActivosData] = await Promise.all([
-        tiposMencionService.getAll(),
-        canalesService.getAll(),
-        clientesService.getActivos(),
-      ])
-
-      setTiposMenciones(tiposData)
-      setCanales(canalesData)
-      const nombresActivos = clientesActivosData.map((c) => c.nombre)
+      // Obtener solo clientes activos
+      const todosClientes = getStoredData<Cliente[]>("clientes", CLIENTES_INICIALES)
+      const activos = getClientesActivos(todosClientes)
+      const nombresActivos = activos.map((c) => c.nombre)
       setClientesActivos(nombresActivos)
       setClientesFiltrados(nombresActivos)
-    } catch (error) {
-      console.error("Error cargando datos:", error)
-      const tiposLS = localStorage.getItem("tipos")
-      const canalesLS = localStorage.getItem("canales")
-      const clientesLS = localStorage.getItem("clientes")
-
-      if (tiposLS) setTiposMenciones(JSON.parse(tiposLS))
-      if (canalesLS) setCanales(JSON.parse(canalesLS))
-      if (clientesLS) {
-        const todosClientes = JSON.parse(clientesLS)
-        const activos = todosClientes.filter((c: Cliente) => {
-          const hoy = new Date()
-          const fin = new Date(c.fechaFin)
-          return fin >= hoy
-        })
-        const nombresActivos = activos.map((c: Cliente) => c.nombre)
-        setClientesActivos(nombresActivos)
-        setClientesFiltrados(nombresActivos)
-      }
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [isOpen])
 
   const filtrarClientes = (busqueda: string) => {
     if (!busqueda.trim()) {
@@ -136,31 +116,33 @@ export function RegistroModal({ isOpen, onClose, onRegistroExitoso }: RegistroMo
     mostrarConfirmacion(
       "Confirmar registro de mención",
       `${descripcion}. Una vez registrado no podrás modificarlo.`,
-      async () => {
-        try {
-          await mencionesService.create({
-            cliente: formulario.cliente,
-            tipoMencion: tiposConcatenados,
-            canal: formulario.canalSeleccionado,
-            fecha: formulario.fecha,
-            hora: formulario.hora,
-            usuario: usuario,
-          })
-
-          setFormulario({
-            cliente: "",
-            tiposSeleccionados: [],
-            canalSeleccionado: "",
-            fecha: new Date().toISOString().split("T")[0],
-            hora: new Date().toTimeString().slice(0, 5),
-          })
-
-          onRegistroExitoso()
-          onClose()
-        } catch (error) {
-          console.error("Error registrando mención:", error)
-          alert("Error al registrar mención")
+      () => {
+        const nuevaMencion: Mencion = {
+          id: generateId(),
+          cliente: formulario.cliente,
+          tipoMencion: tiposConcatenados,
+          canal: formulario.canalSeleccionado,
+          fecha: formulario.fecha,
+          hora: formulario.hora,
+          usuario: usuario,
+          fechaCreacion: new Date().toISOString(),
         }
+
+        const menciones = getStoredData<Mencion[]>("menciones", [])
+        const nuevasMenciones = [...menciones, nuevaMencion]
+        setStoredData("menciones", nuevasMenciones)
+
+        // Limpiar formulario
+        setFormulario({
+          cliente: "",
+          tiposSeleccionados: [],
+          canalSeleccionado: "",
+          fecha: new Date().toISOString().split("T")[0],
+          hora: new Date().toTimeString().slice(0, 5),
+        })
+
+        onRegistroExitoso()
+        onClose()
       },
     )
   }
@@ -195,6 +177,7 @@ export function RegistroModal({ isOpen, onClose, onRegistroExitoso }: RegistroMo
           </DialogHeader>
 
           <div className="space-y-6 py-4">
+            {/* Cliente con autocompletado */}
             <div className="space-y-2">
               <Label htmlFor="cliente" className="text-sm font-medium">
                 Cliente * (Solo clientes activos)
@@ -227,6 +210,7 @@ export function RegistroModal({ isOpen, onClose, onRegistroExitoso }: RegistroMo
               </div>
             </div>
 
+            {/* Selección múltiple de tipos */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Tipos de Mención * (selecciona uno o más)</Label>
               <Select onValueChange={(value) => toggleTipo(value)}>
@@ -255,6 +239,7 @@ export function RegistroModal({ isOpen, onClose, onRegistroExitoso }: RegistroMo
               )}
             </div>
 
+            {/* Selección de canal con badges */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Canal *</Label>
               <div className="flex flex-wrap gap-2">
@@ -271,6 +256,7 @@ export function RegistroModal({ isOpen, onClose, onRegistroExitoso }: RegistroMo
               </div>
             </div>
 
+            {/* Fecha y hora */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fecha" className="text-sm font-medium">

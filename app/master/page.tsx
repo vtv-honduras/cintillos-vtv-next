@@ -105,7 +105,6 @@ export default function MasterPage() {
   }
 
   return (
-    <RouteGuard requiredRole="master">
       <div className="min-h-screen bg-gray-50 pt-16">
         <Navbar title="Panel Master - Registro de Menciones" />
 
@@ -334,6 +333,5 @@ export default function MasterPage() {
 
         <RegistroModal isOpen={modalAbierta} onClose={cerrarModal} onRegistroExitoso={handleRegistroExitoso} />
       </div>
-    </RouteGuard>
   )
 }

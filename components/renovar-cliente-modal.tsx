@@ -55,7 +55,7 @@ export default function RenovarClienteModal({ isOpen, onClose, cliente, onRenova
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="nueva-fecha-inicio">Nueva Fecha de Inicio</Label>
               <Input

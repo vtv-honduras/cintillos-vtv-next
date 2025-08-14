@@ -20,7 +20,6 @@ export default function AdminPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [nuevoCanal, setNuevoCanal] = useState("")
   const [nuevoUsuario, setNuevoUsuario] = useState({
-    username: "",
     password: "",
     role: "master" as const,
     name: "",
@@ -179,7 +178,6 @@ export default function AdminPage() {
   }
 
   return (
-    <RouteGuard allowedRoles={["admin"]}>
       <div className="min-h-screen bg-gray-50 pt-16">
         <Navbar title="Panel de Administrador" />
         <div className="container mx-auto p-4 sm:p-6 space-y-6">
@@ -398,8 +396,8 @@ export default function AdminPage() {
                                 <div className="flex items-center space-x-4 min-w-0 flex-1">
                                   <div className="flex flex-col min-w-0 flex-1">
                                     <div className="flex items-center space-x-2 mb-1">
-                                      <span className="font-medium truncate" title={usuario.name}>
-                                        {usuario.name}
+                                      <span className="font-medium truncate" title={usuario.nombre}>
+                                        {usuario.nombre}
                                       </span>
                                       <Badge className={`${getRoleColor(usuario.role)} text-xs shrink-0`}>
                                         {getRoleName(usuario.role)}
@@ -431,7 +429,7 @@ export default function AdminPage() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() =>
-                                      confirmarAccion(`¿Estás seguro de eliminar al usuario "${usuario.name}"?`, () =>
+                                      confirmarAccion(`¿Estás seguro de eliminar al usuario "${usuario.nombre}"?`, () =>
                                         eliminarUsuario(usuario.id),
                                       )
                                     }
@@ -454,8 +452,8 @@ export default function AdminPage() {
                                   <div className="space-y-3">
                                     <div className="flex items-start justify-between">
                                       <div className="min-w-0 flex-1 pr-2">
-                                        <h3 className="font-medium truncate" title={usuario.name}>
-                                          {usuario.name}
+                                        <h3 className="font-medium truncate" title={usuario.nombre}>
+                                          {usuario.nombre}
                                         </h3>
                                         <p className="text-sm text-gray-500 truncate" title={usuario.email}>
                                           {usuario.email}
@@ -488,7 +486,7 @@ export default function AdminPage() {
                                         size="sm"
                                         onClick={() =>
                                           confirmarAccion(
-                                            `¿Estás seguro de eliminar al usuario "${usuario.name}"?`,
+                                            `¿Estás seguro de eliminar al usuario "${usuario.nombre}"?`,
                                             () => eliminarUsuario(usuario.id),
                                           )
                                         }
@@ -524,6 +522,5 @@ export default function AdminPage() {
           )}
         </div>
       </div>
-    </RouteGuard>
   )
 }

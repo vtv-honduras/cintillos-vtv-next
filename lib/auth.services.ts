@@ -4,56 +4,62 @@ import {
   onAuthStateChanged,
   signOut,
   getIdTokenResult,
-  getIdToken,
-} from "firebase/auth"
-import { auth } from "./firebase"
+  getIdToken
+} from "firebase/auth";
+import { auth } from "./firebase";
 
-export const login = async (email: string, password: string) => {
+const login = async (email: string, password: string) => {
   try {
     if (!email || !password) {
-      console.log("Debe de llenar los campos")
-      return { authenticated: false }
+      console.log("Debe de llenar los campos");
+      return { authenticated: false };
     }
-    const userCredential = await signInWithEmailAndPassword(auth, email, password)
-    const user = userCredential.user
-    if (!user.emailVerified) {
-      await forgotPassword(email)
-      await logout()
-      return { authenticated: false, firstInit: true }
-    }
-
-    console.log("Inicio de sesión exitoso")
-    return { authenticated: true, firstInit: false }
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+    const user = userCredential.user;
+       if (!user.emailVerified) {
+        await forgotPassword(email);
+        await logout();
+        return { authenticated: false, firstInit: true };
+      }
+  
+    console.log("Inicio de sesión exitoso");
+    return { authenticated: true, firstInit: false };
   } catch (error: any) {
-    handleAuthError(error)
-    return { authenticated: false, firstInit: false }
+    handleAuthError(error);
+    return { authenticated: false, firstInit: false  };
   }
-}
+};
 
-export const forgotPassword = async (email: string) => {
+const forgotPassword = async (email: string) => {
   try {
     if (!email) {
-      console.log("Por favor, ingresa tu correo electrónico.")
-      return
+      console.log("Por favor, ingresa tu correo electrónico.");
+      return;
     }
-    await sendPasswordResetEmail(auth, email)
-    console.log("Se ha enviado un enlace para restablecer tu contraseña a tu correo electrónico.")
+    await sendPasswordResetEmail(auth, email);
+    console.log(
+      "Se ha enviado un enlace para restablecer tu contraseña a tu correo electrónico."
+    );
   } catch (error: any) {
-    console.log("Error al enviar el correo de recuperación:", error.message)
+    console.log("Error al enviar el correo de recuperación:", error.message);
   }
-}
+};
 
-export const checkActiveSession = () => {
+const checkActiveSession = () => {
   return new Promise<{
-    email: string
-    nombre: string
-    uid: string | null
-    authenticated: boolean
-    rol: any
+    email: string;
+    nombre: string;
+    uid: string | null;
+    authenticated: boolean;
+    rol: any;
   }>((resolve) => {
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        const idTokenResult = await getIdTokenResult(user)
+        const idTokenResult = await getIdTokenResult(user);
 
         resolve({
           email: user.email ?? "",
@@ -63,68 +69,71 @@ export const checkActiveSession = () => {
           rol: {
             rol: idTokenResult.claims.rol,
             rol_id: idTokenResult.claims.rol_id,
-          },
-        })
-      } else {
-        console.log("No hay sesión activa.")
-        resolve({ email: "", nombre: "", uid: null, authenticated: false, rol: {} })
-      }
-    })
-  })
-}
 
-export const logout = async () => {
+          }
+        });
+      } else {
+        console.log("No hay sesión activa.");
+        resolve({ email: "", nombre: "", uid: null, authenticated: false, rol: {} });
+      }
+    });
+  });
+};
+
+const logout = async () => {
   try {
     if (typeof window !== "undefined") {
-      localStorage.removeItem("user")
-      localStorage.removeItem("init_login")
+      localStorage.removeItem("user");
+      localStorage.removeItem("init_login");
     }
-    await signOut(auth)
-    console.log("Sesión cerrada. Nos vemos pronto!")
-    return { success: true }
+    await signOut(auth);
+    console.log("Sesión cerrada. Nos vemos pronto!");
+    return { success: true };
   } catch (error: any) {
-    console.log("Error al cerrar sesión:", error.message)
-    return { success: false, error: error.message }
+    console.log("Error al cerrar sesión:", error.message);
+    return { success: false, error: error.message };
   }
-}
+};
 
 const handleAuthError = (error: any) => {
-  let errorMessage = "Error inesperado."
+  let errorMessage = "Error inesperado.";
   if (error.code === "auth/invalid-credential") {
-    errorMessage = "Credenciales incorrectas."
+    errorMessage = "Credenciales incorrectas.";
   } else if (error.code === "auth/user-not-found") {
-    errorMessage = "Usuario no encontrado."
+    errorMessage = "Usuario no encontrado.";
   } else if (error.code === "auth/invalid-email") {
-    errorMessage = "Correo electrónico no válido."
+    errorMessage = "Correo electrónico no válido.";
   }
-  console.log("Error de Autenticación:", errorMessage)
-}
+  console.log("Error de Autenticación:", errorMessage);
+};
 
-export const getToken = async (): Promise<string | null> => {
+const getToken = async (): Promise<string | null> => {
   try {
-    const user = auth.currentUser
+    const user = auth.currentUser;
 
     if (user) {
-      const token = await getIdToken(user)
-      return token
+      const token = await getIdToken(user);
+      return token;
     }
     return new Promise((resolve, reject) => {
       const unsubscribe = onAuthStateChanged(auth, async (user) => {
-        unsubscribe()
+        unsubscribe();
         if (user) {
           try {
-            const token = await getIdToken(user)
-            resolve(token)
+            const token = await getIdToken(user);
+            resolve(token);
           } catch (err) {
-            reject(err)
+            reject(err);
           }
         } else {
-          reject(new Error("No hay un usuario autenticado."))
+          reject(new Error("No hay un usuario autenticado."));
         }
-      })
-    })
+      });
+    });
   } catch (error) {
-    console.error("Error al obtener el token:", error)
-    throw error
+    console.error("Error al obtener el token:", error);
+    throw error;
   }
-}
+};
+
+export { login, logout, forgotPassword, checkActiveSession, getToken };

@@ -6,7 +6,8 @@ import "./globals.css"
 
 export const metadata: Metadata = {
   title: "Control de Menciones - Plataforma VTV",
-  description: "Sistema de gestión y control de menciones y cintillos para VTV"
+  description: "Sistema de gestión y control de menciones y cintillos para VTV",
+  generator: "v0.dev",
 }
 
 export default function RootLayout({
