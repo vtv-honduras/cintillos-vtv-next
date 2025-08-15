@@ -637,7 +637,7 @@ export default function AdminPage() {
                                     </div>
                                   </div>
                                   {usuario.role !== "admin" && (
-                                    <div className="flex space-x-2">
+                                    <div className="flex justify-end space-x-2">
                                       <Button
                                         variant="outline"
                                         size="sm"

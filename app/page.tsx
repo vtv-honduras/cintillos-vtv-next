@@ -92,7 +92,6 @@ export default function LoginPage() {
 
       if (!authenticated) {
         if (disabled) {
-          console.log("Entro")
           setError(message ?? "Tu usuario está desactivado. Contacta a TI.")
         } else if (firstInit) {
           setError("Te enviamos un correo para verificar tu cuenta. Revisa tu bandeja.")
@@ -200,11 +199,7 @@ export default function LoginPage() {
             {error && <div className="text-vtv-red text-sm text-center font-medium">{error}</div>}
             {info && !error && <div className="text-green-600 text-sm text-center font-medium">{info}</div>}
 
-            <div className="flex items-center justify-between">
-              <Button type="submit" className="bg-vtv-blue hover:bg-vtv-blue/90 text-white" disabled={loading}>
-                {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Iniciar Sesión"}
-              </Button>
-
+            <div className="w-full flex justify-end">
               <Button
                 type="button"
                 variant="link"
@@ -215,6 +210,9 @@ export default function LoginPage() {
                 {resetLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "¿Olvidaste tu contraseña?"}
               </Button>
             </div>
+              <Button type="submit" className="w-full bg-vtv-blue hover:bg-vtv-blue/90 text-white" disabled={loading}>
+                {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Iniciar Sesión"}
+              </Button>
           </form>
         </CardContent>
       </Card>
