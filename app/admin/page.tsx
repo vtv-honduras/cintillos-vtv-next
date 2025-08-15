@@ -51,6 +51,9 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [usuariosLoading, setUsuariosLoading] = useState(false);
   const [canalesLoading, setCanalesLoading] = useState(false);
+  const [estadoUsuarioLoading, setEstadoUsuarioLoading] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     cargarDatos();
@@ -182,7 +185,7 @@ export default function AdminPage() {
     if (!usuario) return;
 
     try {
-      setUsuariosLoading(true);
+      setEstadoUsuarioLoading(id);
       const response = await fetch("/api/users", {
         method: "PUT",
         headers: {
@@ -197,7 +200,7 @@ export default function AdminPage() {
     } catch (error) {
       console.error("Error actualizando usuario:", error);
     } finally {
-      setUsuariosLoading(false);
+      setEstadoUsuarioLoading(null);
     }
   };
 
@@ -306,55 +309,63 @@ export default function AdminPage() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">
-                      Canales Registrados
-                    </CardTitle>
-                    <CardDescription className="text-sm">
-                      Lista de todos los canales disponibles ({canales.length}{" "}
-                      total)
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-3">
-                      {canales.map((canal) => (
-                        <div
-                          key={canal.id}
-                          className="flex items-center justify-between p-3 border rounded-lg"
-                        >
-                          <div className="flex items-center space-x-3 min-w-0 flex-1">
-                            <div className="w-2 h-2 bg-vtv-blue rounded-full shrink-0"></div>
-                            <span
-                              className="font-medium truncate"
-                              title={canal.nombre}
-                            >
-                              {canal.nombre}
-                            </span>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              confirmarAccion(
-                                `¿Estás seguro de eliminar el canal "${canal.nombre}"?`,
-                                () => eliminarCanal(canal.id)
-                              )
-                            }
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                      {canales.length === 0 && (
-                        <div className="text-center py-8 text-gray-500 text-sm">
-                          No hay canales registrados
-                        </div>
-                      )}
+                {canalesLoading ? (
+                  <div className="w-full bg-gray-50 pt-16 flex items-center justify-center">
+                    <div className="text-center">
+                      <Loader2 className="h-6 w-6 animate-spin" />
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">
+                        Canales Registrados
+                      </CardTitle>
+                      <CardDescription className="text-sm">
+                        Lista de todos los canales disponibles ({canales.length}{" "}
+                        total)
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-3">
+                        {canales.map((canal) => (
+                          <div
+                            key={canal.id}
+                            className="flex items-center justify-between p-3 border rounded-lg"
+                          >
+                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                              <div className="w-2 h-2 bg-vtv-blue rounded-full shrink-0"></div>
+                              <span
+                                className="font-medium truncate"
+                                title={canal.nombre}
+                              >
+                                {canal.nombre}
+                              </span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                confirmarAccion(
+                                  `¿Estás seguro de eliminar el canal "${canal.nombre}"?`,
+                                  () => eliminarCanal(canal.id)
+                                )
+                              }
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        {canales.length === 0 && (
+                          <div className="text-center py-8 text-gray-500 text-sm">
+                            No hay canales registrados
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </TabsContent>
 
@@ -371,8 +382,8 @@ export default function AdminPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 [&>div]:min-w-0">
+                      <div className="min-w-0">
                         <Label htmlFor="name" className="text-sm">
                           Nombre Completo
                         </Label>
@@ -386,11 +397,11 @@ export default function AdminPage() {
                             })
                           }
                           placeholder="Juan Pérez"
-                          className="mt-1"
+                          className="mt-1 w-full"
                         />
                       </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <Label htmlFor="email" className="text-sm">
                           Email
                         </Label>
@@ -405,10 +416,11 @@ export default function AdminPage() {
                             })
                           }
                           placeholder="usuario@vtv.gob.hn"
-                          className="mt-1"
+                          className="mt-1 w-full"
                         />
                       </div>
-                      <div>
+
+                      <div className="min-w-0">
                         <Label htmlFor="role" className="text-sm">
                           Rol
                         </Label>
@@ -418,10 +430,14 @@ export default function AdminPage() {
                             setNuevoUsuario({ ...nuevoUsuario, role: value })
                           }
                         >
-                          <SelectTrigger className="mt-1">
+                          <SelectTrigger className="mt-1 w-full">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          {/* 👇 evita desbordes del menú */}
+                          <SelectContent
+                            position="popper"
+                            className="w-[--radix-select-trigger-width] max-w-[calc(100vw-2rem)]"
+                          >
                             <SelectItem value="admin">Administrador</SelectItem>
                             <SelectItem value="master">Master</SelectItem>
                             <SelectItem value="programacion">
@@ -431,7 +447,7 @@ export default function AdminPage() {
                         </Select>
                       </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <Label htmlFor="password" className="text-sm">
                           Contraseña
                         </Label>
@@ -446,11 +462,12 @@ export default function AdminPage() {
                             })
                           }
                           placeholder="contraseña123"
-                          className="mt-1"
+                          className="mt-1 w-full"
                         />
                       </div>
 
-                      <div className="flex items-end">
+                      {/* Botón a ancho completo en sm */}
+                      <div className="sm:col-span-2">
                         <Button
                           onClick={() =>
                             confirmarAccion(
@@ -473,123 +490,45 @@ export default function AdminPage() {
                     </div>
                   </CardContent>
                 </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">
-                      Usuarios del Sistema
-                    </CardTitle>
-                    <CardDescription className="text-sm">
-                      Gestión de usuarios registrados ({usuarios.length} total)
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Vista desktop */}
-                    <div className="hidden md:block">
-                      <div className="grid gap-3">
-                        {usuarios.map((usuario) => (
-                          <div
-                            key={usuario.id}
-                            className="flex items-center justify-between p-4 border rounded-lg"
-                          >
-                            <div className="flex items-center space-x-4 min-w-0 flex-1">
-                              <div className="flex flex-col min-w-0 flex-1">
-                                <div className="flex items-center space-x-2 mb-1">
-                                  <span
-                                    className="font-medium truncate"
-                                    title={usuario.nombre}
-                                  >
-                                    {usuario.nombre}
-                                  </span>
-                                  <Badge
-                                    className={`${getRoleColor(
-                                      usuario.role
-                                    )} text-xs shrink-0`}
-                                  >
-                                    {getRoleName(usuario.role)}
-                                  </Badge>
-                                  <Badge
-                                    variant={
-                                      usuario.activo ? "default" : "secondary"
-                                    }
-                                    className="text-xs shrink-0"
-                                  >
-                                    {usuario.activo ? "Activo" : "Inactivo"}
-                                  </Badge>
-                                </div>
-                                <div className="text-sm text-gray-500 truncate">
-                                  {usuario.email}
-                                </div>
-                              </div>
-                            </div>
-                            {
-                              usuario.role =="admin"?(
-                                <div>
-
-                                </div>
-                              ):(
-                                 <div className="flex items-center space-x-2 shrink-0">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => toggleUsuarioActivo(usuario.id)}
-                                className={`text-xs ${
-                                  usuario.activo
-                                    ? "text-orange-600 hover:bg-orange-50"
-                                    : "text-green-600 hover:bg-green-50"
-                                }`}
-                              >
-                                {usuario.activo ? "Desactivar" : "Activar"}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  confirmarAccion(
-                                    `¿Estás seguro de eliminar al usuario "${usuario.nombre}"?`,
-                                    () => eliminarUsuario(usuario.id)
-                                  )
-                                }
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                              )
-                            }
-                           
-                          </div>
-                        ))}
-                      </div>
+                {usuariosLoading ? (
+                  <div className="w-full bg-gray-50 pt-16 flex items-center justify-center">
+                    <div className="text-center">
+                      <Loader2 className="h-6 w-6 animate-spin" />
                     </div>
-
-                    {/* Vista móvil - Cards */}
-                    <div className="md:hidden">
-                      <div className="grid gap-4">
-                        {usuarios.map((usuario) => (
-                          <Card key={usuario.id}>
-                            <CardContent className="p-4">
-                              <div className="space-y-3">
-                                <div className="flex items-start justify-between">
-                                  <div className="min-w-0 flex-1 pr-2">
-                                    <h3
+                  </div>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">
+                        Usuarios del Sistema
+                      </CardTitle>
+                      <CardDescription className="text-sm">
+                        Gestión de usuarios registrados ({usuarios.length}{" "}
+                        total)
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {/* Vista desktop */}
+                      <div className="hidden md:block">
+                        <div className="grid gap-3">
+                          {usuarios.map((usuario) => (
+                            <div
+                              key={usuario.id}
+                              className="flex items-center justify-between p-4 border rounded-lg"
+                            >
+                              <div className="flex items-center space-x-4 min-w-0 flex-1">
+                                <div className="flex flex-col min-w-0 flex-1">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    <span
                                       className="font-medium truncate"
                                       title={usuario.nombre}
                                     >
                                       {usuario.nombre}
-                                    </h3>
-                                    <p
-                                      className="text-sm text-gray-500 truncate"
-                                      title={usuario.email}
-                                    >
-                                      {usuario.email}
-                                    </p>
-                                  </div>
-                                  <div className="flex flex-col space-y-1 shrink-0">
+                                    </span>
                                     <Badge
                                       className={`${getRoleColor(
                                         usuario.role
-                                      )} text-xs`}
+                                      )} text-xs shrink-0 text-center`}
                                     >
                                       {getRoleName(usuario.role)}
                                     </Badge>
@@ -597,27 +536,44 @@ export default function AdminPage() {
                                       variant={
                                         usuario.activo ? "default" : "secondary"
                                       }
-                                      className="text-xs"
+                                      className="text-xs shrink-0 text-center"
                                     >
                                       {usuario.activo ? "Activo" : "Inactivo"}
                                     </Badge>
                                   </div>
+                                  <div className="text-sm text-gray-500 truncate">
+                                    {usuario.email}
+                                  </div>
                                 </div>
-                                <div className="flex space-x-2">
+                              </div>
+                              {usuario.role == "admin" ? (
+                                <div></div>
+                              ) : (
+                                <div className="flex items-center space-x-2 shrink-0">
                                   <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={() =>
                                       toggleUsuarioActivo(usuario.id)
                                     }
-                                    className={`flex-1 text-xs ${
+                                    disabled={
+                                      estadoUsuarioLoading === usuario.id
+                                    }
+                                    className={`inline-flex items-center text-xs ${
                                       usuario.activo
                                         ? "text-orange-600 hover:bg-orange-50"
                                         : "text-green-600 hover:bg-green-50"
                                     }`}
                                   >
-                                    {usuario.activo ? "Desactivar" : "Activar"}
+                                    {estadoUsuarioLoading === usuario.id ? (
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : usuario.activo ? (
+                                      "Desactivar"
+                                    ) : (
+                                      "Activar"
+                                    )}
                                   </Button>
+
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -632,20 +588,109 @@ export default function AdminPage() {
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
 
-                    {usuarios.length === 0 && (
-                      <div className="text-center py-8 text-gray-500 text-sm">
-                        No hay usuarios registrados
+                      {/* Vista móvil - Cards */}
+                      <div className="md:hidden">
+                        <div className="grid gap-4">
+                          {usuarios.map((usuario) => (
+                            <Card key={usuario.id}>
+                              <CardContent className="p-4">
+                                <div className="space-y-3">
+                                  <div className="flex items-start justify-between">
+                                    <div className="min-w-0 flex-1 pr-2">
+                                      <h3
+                                        className="font-medium truncate"
+                                        title={usuario.nombre}
+                                      >
+                                        {usuario.nombre}
+                                      </h3>
+                                      <p
+                                        className="text-sm text-gray-500 truncate"
+                                        title={usuario.email}
+                                      >
+                                        {usuario.email}
+                                      </p>
+                                    </div>
+                                    <div className="flex flex-col items-center space-y-2 shrink-0">
+                                      <Badge
+                                        className={`${getRoleColor(
+                                          usuario.role
+                                        )} text-xs text-center`}
+                                      >
+                                        {getRoleName(usuario.role)}
+                                      </Badge>
+                                      <Badge
+                                        variant={
+                                          usuario.activo
+                                            ? "default"
+                                            : "secondary"
+                                        }
+                                        className="text-xs text-center"
+                                      >
+                                        {usuario.activo ? "Activo" : "Inactivo"}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                  {usuario.role !== "admin" && (
+                                    <div className="flex space-x-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                          toggleUsuarioActivo(usuario.id)
+                                        }
+                                        disabled={
+                                          estadoUsuarioLoading === usuario.id
+                                        }
+                                        className={`inline-flex items-center text-xs ${
+                                          usuario.activo
+                                            ? "text-orange-600 hover:bg-orange-50"
+                                            : "text-green-600 hover:bg-green-50"
+                                        }`}
+                                      >
+                                        {estadoUsuarioLoading === usuario.id ? (
+                                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        ) : usuario.activo ? (
+                                          "Desactivar"
+                                        ) : (
+                                          "Activar"
+                                        )}
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                          confirmarAccion(
+                                            `¿Estás seguro de eliminar al usuario "${usuario.nombre}"?`,
+                                            () => eliminarUsuario(usuario.id)
+                                          )
+                                        }
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+
+                      {usuarios.length === 0 && (
+                        <div className="text-center py-8 text-gray-500 text-sm">
+                          No hay usuarios registrados
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </TabsContent>
           </Tabs>

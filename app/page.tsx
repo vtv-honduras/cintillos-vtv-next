@@ -9,9 +9,8 @@ import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import Image from "next/image"
-import { useAuth } from "@/hooks/use-auth"
 
-// ✅ servicios centralizados
+// servicios centralizados
 import {
   login as loginService,
   checkActiveSession,
@@ -19,30 +18,68 @@ import {
   forgotPassword as forgotPasswordService,
 } from "@/lib/auth.services"
 
+const mapRoleToPath = (role?: string) => {
+  switch (role) {
+    case "admin":
+      return "/admin"
+    case "programacion":
+      return "/programacion"
+    case "master":
+    default:
+      return "/master"
+  }
+}
+
+const persistUser = (sesion: {
+  email: string
+  nombre: string
+  uid: string | null
+  rol?: { rol?: string; rol_id?: any }
+}) => {
+  const role = (sesion.rol?.rol as "admin" | "master" | "programacion") || "master"
+  const userData = {
+    username: sesion.email || "",
+    name: sesion.nombre || "Usuario",
+    role,
+    uid: sesion.uid || "",
+    email: sesion.email || "",
+    rol_id: sesion.rol?.rol_id ?? null,
+  }
+  localStorage.setItem("user", JSON.stringify(userData))
+  return userData
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [initializing, setInitializing] = useState(true) 
   const [error, setError] = useState("")
-  const [info, setInfo] = useState("")          // mensajes informativos (éxito)
-  const [resetLoading, setResetLoading] = useState(false) // estado para “olvidé mi contraseña”
-  const router = useRouter()
-  const { user } = useAuth()
+  const [info, setInfo] = useState("")
+  const [resetLoading, setResetLoading] = useState(false)
 
-  // Si ya hay sesión activa desde el hook, redirige por rol
+  const router = useRouter()
+
   useEffect(() => {
-    if (!user) return
-    const role = (user as any)?.role || (user as any)?.rol || "master"
-    switch (role) {
-      case "admin":
-        router.push("/admin"); break
-      case "master":
-        router.push("/master"); break
-      case "programacion":
-        router.push("/programacion"); break
+    const verify = async () => {
+      try {
+        const sesion = await checkActiveSession()
+        if (sesion.authenticated) {
+           if (sesion.activo === false) { await logoutService(); setError("Tu usuario está desactivado. Contacta a TI."); return; }
+
+          const userData = persistUser(sesion)
+          router.replace(mapRoleToPath(userData.role))
+          return
+        }
+      } catch (error) {
+         console.error(error)
+      } finally {
+        setInitializing(false)
+      }
     }
-  }, [user, router])
+    verify()
+  }, [router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,50 +88,31 @@ export default function LoginPage() {
     setInfo("")
 
     try {
-      // 1) login con servicio
-      const { authenticated, firstInit } = await loginService(email, password)
+      const { authenticated, firstInit, disabled, message } = await loginService(email, password)
 
       if (!authenticated) {
-        if (firstInit) {
-          setError("Te enviamos un correo para verificar tu cuenta. Revisa tu bandeja e intenta nuevamente.")
+        if (disabled) {
+          console.log("Entro")
+          setError(message ?? "Tu usuario está desactivado. Contacta a TI.")
+        } else if (firstInit) {
+          setError("Te enviamos un correo para verificar tu cuenta. Revisa tu bandeja.")
         } else {
-          setError("No se pudo iniciar sesión. Verifica tus credenciales.")
+          setError(message ?? "No se pudo iniciar sesión. Verifica tus credenciales.")
         }
-        setLoading(false)
         return
       }
 
-      // 2) claims + sesión
+      // Sesión activa: obtén claims y redirige por rol
       const sesion = await checkActiveSession()
       if (!sesion.authenticated) {
         setError("No hay sesión activa luego del inicio de sesión.")
-        setLoading(false)
         return
       }
 
-      // 3) normalizar y guardar user
-      const rolFromClaims = sesion.rol?.rol || "master"
-      const userData = {
-        username: sesion.email || "",
-        name: sesion.nombre || "Usuario",
-        role: rolFromClaims as "admin" | "master" | "programacion",
-        uid: sesion.uid || "",
-        email: sesion.email || "",
-        rol_id: sesion.rol?.rol_id ?? null,
-      }
-      localStorage.setItem("user", JSON.stringify(userData))
-
-      // 4) redirect por rol
-      switch (userData.role) {
-        case "admin": router.push("/admin"); break
-        case "master": router.push("/master"); break
-        case "programacion": router.push("/programacion"); break
-        default:
-          setError("Rol de usuario no válido")
-          await logoutService()
-      }
+      const userData = persistUser(sesion)
+      router.push(mapRoleToPath(userData.role))
     } catch (err) {
-      console.error("Error en login:", err)
+      console.error(err)
       setError("Error al iniciar sesión")
     } finally {
       setLoading(false)
@@ -104,12 +122,10 @@ export default function LoginPage() {
   const handleForgotPassword = async () => {
     setError("")
     setInfo("")
-
     if (!email) {
       setError("Ingresa tu correo para enviar el enlace de recuperación.")
       return
     }
-
     try {
       setResetLoading(true)
       await forgotPasswordService(email)
@@ -120,6 +136,14 @@ export default function LoginPage() {
     } finally {
       setResetLoading(false)
     }
+  }
+
+  if (initializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    )
   }
 
   return (
@@ -178,7 +202,7 @@ export default function LoginPage() {
 
             <div className="flex items-center justify-between">
               <Button type="submit" className="bg-vtv-blue hover:bg-vtv-blue/90 text-white" disabled={loading}>
-                {loading ?  <Loader2 className="h-6 w-6 animate-spin" />: "Iniciar Sesión"}
+                {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Iniciar Sesión"}
               </Button>
 
               <Button
@@ -188,7 +212,7 @@ export default function LoginPage() {
                 onClick={handleForgotPassword}
                 disabled={resetLoading}
               >
-                {resetLoading ?  <Loader2 className="h-6 w-6 animate-spin" /> : "¿Olvidaste tu contraseña?"}
+                {resetLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "¿Olvidaste tu contraseña?"}
               </Button>
             </div>
           </form>
