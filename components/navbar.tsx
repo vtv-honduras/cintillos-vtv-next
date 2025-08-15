@@ -5,27 +5,74 @@ import { Button } from "@/components/ui/button"
 import { LogOut, User, Menu, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
+import { checkActiveSession, logout as logoutService } from "@/lib/auth.services"
 
 interface NavbarProps {
   title: string
 }
 
+type UiUser = {
+  name: string
+  role: "admin" | "master" | "programacion" | string
+  email?: string
+  uid?: string
+}
+
 export function Navbar({ title }: NavbarProps) {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<UiUser | null>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const router = useRouter()
 
+  // Carga inicial del usuario (localStorage -> sesión activa en Firebase)
   useEffect(() => {
-    const userSession = localStorage.getItem("user_session")
-    if (userSession) {
-      setUser(JSON.parse(userSession))
+    const load = async () => {
+      try {
+        const raw = localStorage.getItem("user") || localStorage.getItem("user_session")
+        if (raw) {
+          setUser(JSON.parse(raw))
+          return
+        }
+        // Intento de sesión activa (claims)
+        const sesion = await checkActiveSession()
+        if (sesion.authenticated) {
+          const role = (sesion.rol?.rol as UiUser["role"]) || "master"
+          const u: UiUser = {
+            name: sesion.nombre || "Usuario",
+            role,
+            email: sesion.email || "",
+            uid: sesion.uid || "",
+          }
+          // Guarda en el key moderno para mantener consistencia
+          localStorage.setItem("user", JSON.stringify(u))
+          setUser(u)
+        }
+      } catch (e) {
+        console.error("Navbar: error cargando sesión:", e)
+      }
     }
+    load()
+
+    // Sincroniza cambios entre pestañas/ventanas
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "user" || e.key === "user_session") {
+        const raw = localStorage.getItem("user") || localStorage.getItem("user_session")
+        setUser(raw ? JSON.parse(raw) : null)
+      }
+    }
+    window.addEventListener("storage", onStorage)
+    return () => window.removeEventListener("storage", onStorage)
   }, [])
 
-  const handleLogout = () => {
-    localStorage.removeItem("user_session")
-    setIsMenuOpen(false)
-    router.push("/")
+  const handleLogout = async () => {
+    try {
+      await logoutService()
+    } finally {
+      localStorage.removeItem("user")
+      localStorage.removeItem("user_session")
+      setIsMenuOpen(false)
+      setUser(null)
+      router.push("/")
+    }
   }
 
   const getRoleLabel = (role: string) => {
@@ -74,7 +121,7 @@ export function Navbar({ title }: NavbarProps) {
             </div>
           </div>
 
-          {/* Desktop menu */}
+          {/* Desktop */}
           <div className="hidden md:flex items-center space-x-4">
             {user && (
               <div className="flex items-center space-x-2 text-sm text-white">
@@ -91,14 +138,14 @@ export function Navbar({ title }: NavbarProps) {
               variant="outline"
               size="sm"
               onClick={handleLogout}
-              className="flex items-center space-x-2 bg-white/90 border-white text-vtv-blue hover:bg-white hover:text-vtv-red transition-colors whitespace-nowrap"
+              className="flex items-center space-x-2 whitespace-nowrap"
             >
               <LogOut className="h-4 w-4" />
               <span className="hidden lg:inline">Cerrar Sesión</span>
             </Button>
           </div>
 
-          {/* Mobile menu button */}
+          {/* Mobile toggle */}
           <div className="md:hidden flex items-center">
             <Button
               variant="ghost"
@@ -134,7 +181,7 @@ export function Navbar({ title }: NavbarProps) {
                 variant="outline"
                 size="sm"
                 onClick={handleLogout}
-                className="flex items-center space-x-2 w-full justify-center bg-white/90 border-white text-vtv-blue hover:bg-white hover:text-vtv-red transition-colors"
+                className="flex items-center space-x-2 w-full justify-center"
               >
                 <LogOut className="h-4 w-4" />
                 <span>Cerrar Sesión</span>

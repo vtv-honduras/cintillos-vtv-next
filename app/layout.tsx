@@ -26,7 +26,7 @@ html {
 }
         `}</style>
       </head>
-      <body className="pt-16">{children}</body>
+      <body>{children}</body>
     </html>
   )
 }

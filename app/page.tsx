@@ -7,12 +7,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import Image from "next/image"
 import { useAuth } from "@/hooks/use-auth"
 
-import { signInWithEmailAndPassword } from "firebase/auth"
-import { auth } from "@/lib/firebase"
+// ✅ servicios centralizados
+import {
+  login as loginService,
+  checkActiveSession,
+  logout as logoutService,
+  forgotPassword as forgotPasswordService,
+} from "@/lib/auth.services"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -20,23 +25,22 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [info, setInfo] = useState("")          // mensajes informativos (éxito)
+  const [resetLoading, setResetLoading] = useState(false) // estado para “olvidé mi contraseña”
   const router = useRouter()
   const { user } = useAuth()
 
+  // Si ya hay sesión activa desde el hook, redirige por rol
   useEffect(() => {
-    if (user) {
-      // Redirigir según el rol
-      switch (user.role) {
-        case "admin":
-          router.push("/admin")
-          break
-        case "master":
-          router.push("/master")
-          break
-        case "programacion":
-          router.push("/programacion")
-          break
-      }
+    if (!user) return
+    const role = (user as any)?.role || (user as any)?.rol || "master"
+    switch (role) {
+      case "admin":
+        router.push("/admin"); break
+      case "master":
+        router.push("/master"); break
+      case "programacion":
+        router.push("/programacion"); break
     }
   }, [user, router])
 
@@ -44,61 +48,78 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError("")
+    setInfo("")
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      const firebaseUser = userCredential.user
+      // 1) login con servicio
+      const { authenticated, firstInit } = await loginService(email, password)
 
-      if (!firebaseUser.emailVerified) {
-        setError("Por favor verifica tu correo electrónico antes de iniciar sesión")
+      if (!authenticated) {
+        if (firstInit) {
+          setError("Te enviamos un correo para verificar tu cuenta. Revisa tu bandeja e intenta nuevamente.")
+        } else {
+          setError("No se pudo iniciar sesión. Verifica tus credenciales.")
+        }
         setLoading(false)
         return
       }
 
-      // Obtener claims personalizados
-      const idTokenResult = await firebaseUser.getIdTokenResult()
-      const role = idTokenResult.claims.role || "master"
-
-      // Crear objeto de usuario
-      const userData = {
-        username: firebaseUser.email || "",
-        name: firebaseUser.displayName || "Usuario",
-        role: role as "admin" | "master" | "programacion",
-        uid: firebaseUser.uid,
-        email: firebaseUser.email || "",
+      // 2) claims + sesión
+      const sesion = await checkActiveSession()
+      if (!sesion.authenticated) {
+        setError("No hay sesión activa luego del inicio de sesión.")
+        setLoading(false)
+        return
       }
 
-      // Guardar en localStorage para compatibilidad
+      // 3) normalizar y guardar user
+      const rolFromClaims = sesion.rol?.rol || "master"
+      const userData = {
+        username: sesion.email || "",
+        name: sesion.nombre || "Usuario",
+        role: rolFromClaims as "admin" | "master" | "programacion",
+        uid: sesion.uid || "",
+        email: sesion.email || "",
+        rol_id: sesion.rol?.rol_id ?? null,
+      }
       localStorage.setItem("user", JSON.stringify(userData))
 
-      // Redirigir según el rol
-      switch (role) {
-        case "admin":
-          router.push("/admin")
-          break
-        case "master":
-          router.push("/master")
-          break
-        case "programacion":
-          router.push("/programacion")
-          break
+      // 4) redirect por rol
+      switch (userData.role) {
+        case "admin": router.push("/admin"); break
+        case "master": router.push("/master"); break
+        case "programacion": router.push("/programacion"); break
         default:
           setError("Rol de usuario no válido")
+          await logoutService()
       }
-    } catch (error: any) {
-      console.error("Error en login:", error)
-      if (error.code === "auth/invalid-credential") {
-        setError("Credenciales incorrectas")
-      } else if (error.code === "auth/user-not-found") {
-        setError("Usuario no encontrado")
-      } else if (error.code === "auth/invalid-email") {
-        setError("Correo electrónico no válido")
-      } else {
-        setError("Error al iniciar sesión")
-      }
+    } catch (err) {
+      console.error("Error en login:", err)
+      setError("Error al iniciar sesión")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleForgotPassword = async () => {
+    setError("")
+    setInfo("")
+
+    if (!email) {
+      setError("Ingresa tu correo para enviar el enlace de recuperación.")
+      return
     }
 
-    setLoading(false)
+    try {
+      setResetLoading(true)
+      await forgotPasswordService(email)
+      setInfo("Te enviamos un enlace para restablecer tu contraseña. Revisa tu correo.")
+    } catch (err) {
+      console.error("Error al enviar recuperación:", err)
+      setError("No se pudo enviar el correo de recuperación.")
+    } finally {
+      setResetLoading(false)
+    }
   }
 
   return (
@@ -111,6 +132,7 @@ export default function LoginPage() {
           <CardTitle className="text-2xl font-bold text-vtv-blue">Control de Menciones</CardTitle>
           <CardDescription className="text-gray-600">VTV Honduras - Sistema de Gestión</CardDescription>
         </CardHeader>
+
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
@@ -150,11 +172,25 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Mensajes */}
             {error && <div className="text-vtv-red text-sm text-center font-medium">{error}</div>}
+            {info && !error && <div className="text-green-600 text-sm text-center font-medium">{info}</div>}
 
-            <Button type="submit" className="w-full bg-vtv-blue hover:bg-vtv-blue/90 text-white" disabled={loading}>
-              {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
-            </Button>
+            <div className="flex items-center justify-between">
+              <Button type="submit" className="bg-vtv-blue hover:bg-vtv-blue/90 text-white" disabled={loading}>
+                {loading ?  <Loader2 className="h-6 w-6 animate-spin" />: "Iniciar Sesión"}
+              </Button>
+
+              <Button
+                type="button"
+                variant="link"
+                className="text-vtv-blue px-0"
+                onClick={handleForgotPassword}
+                disabled={resetLoading}
+              >
+                {resetLoading ?  <Loader2 className="h-6 w-6 animate-spin" /> : "¿Olvidaste tu contraseña?"}
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
