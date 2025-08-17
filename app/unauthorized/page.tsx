@@ -12,8 +12,9 @@ export default function UnauthorizedPage() {
   const { user, logout } = useAuth()
 
   const handleGoBack = () => {
-    console.log("WENO")
+    router.push("/")
   }
+   
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 flex items-center justify-center p-4">
