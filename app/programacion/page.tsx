@@ -81,6 +81,8 @@ export default function ProgramacionPage() {
   const [clienteARenovar, setClienteARenovar] = useState<Cliente | null>(null);
   const [pendingAction, setPendingAction] = useState<() => void>(() => {});
   const [confirmMessage, setConfirmMessage] = useState("");
+  const [modoFecha, setModoFecha] = useState<"mes" | "rango">("mes");
+  const [rangoFecha, setRangoFecha] = useState({ inicio: "", fin: "" });
 
   useEffect(() => {
     const init = async () => {
@@ -311,30 +313,38 @@ export default function ProgramacionPage() {
     }
   };
 
-  const registrosFiltrados = menciones.filter((mencion) => {
-    const cumpleFecha = !filtroFecha || mencion.fecha.startsWith(filtroFecha);
+const registrosFiltrados = menciones.filter((mencion) => {
+  // Fecha
+  const cumpleFecha =
+    (modoFecha === "mes" &&
+      (!filtroFecha || mencion.fecha.startsWith(filtroFecha))) ||
+    (modoFecha === "rango" &&
+      (!rangoFecha.inicio ||
+        !rangoFecha.fin ||
+        (mencion.fecha >= rangoFecha.inicio && mencion.fecha <= rangoFecha.fin)));
 
-    const terminosTipo = parseSearch(filtroTipo);
-    const tiposDeLaMencion = splitTipos(mencion.tipoMencion);
-    const tipoPlano = normalize(mencion.tipoMencion);
+  // Tipo (tu lógica existente)
+  const terminosTipo = parseSearch(filtroTipo);
+  const tiposDeLaMencion = splitTipos(mencion.tipoMencion);
+  const tipoPlano = normalize(mencion.tipoMencion);
+  const cumpleTipo =
+    terminosTipo.length === 0 ||
+    terminosTipo.every(
+      (term) =>
+        tipoPlano.includes(term) || tiposDeLaMencion.some((t) => t.includes(term))
+    );
 
-    const cumpleTipo =
-      terminosTipo.length === 0 ||
-      terminosTipo.every(
-        (term) =>
-          tipoPlano.includes(term) ||
-          tiposDeLaMencion.some((t) => t.includes(term))
-      );
+  // Cliente (tu lógica existente)
+  const clienteFiltro = normalize(filtroCliente);
+  const clienteMencion = normalize(mencion.cliente);
+  const cumpleCliente = !clienteFiltro || clienteMencion.includes(clienteFiltro);
 
-    const clienteFiltro = normalize(filtroCliente);
-    const clienteMencion = normalize(mencion.cliente);
-    const cumpleCliente =
-      !clienteFiltro || clienteMencion.includes(clienteFiltro);
+  return cumpleFecha && cumpleTipo && cumpleCliente;
+});
 
-    return cumpleFecha && cumpleTipo && cumpleCliente;
-  });
 
   return (
+    <RouteGuard requiredRole={"programacion"} >
     <div className="min-h-screen bg-gray-50 pt-16">
       <Navbar title="Panel de Programación" />
       <div className="container mx-auto p-4 sm:p-6 space-y-6">
@@ -425,53 +435,97 @@ export default function ProgramacionPage() {
                 </div>
 
                 {/* Filtros */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">
-                      Filtros de Búsqueda
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <Label htmlFor="filtro-fecha" className="text-sm">
-                          Mes
-                        </Label>
-                        <Input
-                          id="filtro-fecha"
-                          type="month"
-                          value={filtroFecha}
-                          onChange={(e) => setFiltroFecha(e.target.value)}
-                          className="mt-1 h-10"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="filtro-tipo" className="text-sm">
-                          Tipo de Mención
-                        </Label>
-                        <Input
-                          id="filtro-tipo"
-                          value={filtroTipo}
-                          onChange={(e) => setFiltroTipo(e.target.value)}
-                          placeholder="Ej: mencion, cintillo (coincidencia parcial)"
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="filtro-cliente" className="text-sm">
-                          Cliente
-                        </Label>
-                        <Input
-                          id="filtro-cliente"
-                          value={filtroCliente}
-                          onChange={(e) => setFiltroCliente(e.target.value)}
-                          placeholder="Filtrar por cliente..."
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+            <Card>
+  <CardHeader>
+    <CardTitle className="text-lg">Filtros de Búsqueda</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Modo de fecha */}
+      <div>
+        <Label htmlFor="modo-fecha" className="text-sm">Fecha</Label>
+        <select
+          id="modo-fecha"
+          value={modoFecha}
+          onChange={(e) => setModoFecha(e.target.value as "mes" | "rango")}
+          className="mt-1 h-10 w-full border rounded-md px-3"
+        >
+          <option value="mes">Por mes</option>
+          <option value="rango">Rango personalizado</option>
+        </select>
+      </div>
+
+      {/* Si es por mes, usa el input existente */}
+      {modoFecha === "mes" && (
+        <div>
+          <Label htmlFor="filtro-fecha" className="text-sm">Mes</Label>
+          <Input
+            id="filtro-fecha"
+            type="month"
+            value={filtroFecha}
+            onChange={(e) => setFiltroFecha(e.target.value)}
+            className="mt-1 h-10"
+          />
+        </div>
+      )}
+
+      {/* Si es rango, muestra inicio/fin */}
+      {modoFecha === "rango" && (
+        <>
+          <div>
+            <Label htmlFor="fecha-inicio" className="text-sm">Desde</Label>
+            <Input
+              id="fecha-inicio"
+              type="date"
+              value={rangoFecha.inicio}
+              onChange={(e) =>
+                setRangoFecha((r) => ({ ...r, inicio: e.target.value }))
+              }
+              className="mt-1 h-10"
+            />
+          </div>
+          <div>
+            <Label htmlFor="fecha-fin" className="text-sm">Hasta</Label>
+            <Input
+              id="fecha-fin"
+              type="date"
+              value={rangoFecha.fin}
+              onChange={(e) =>
+                setRangoFecha((r) => ({ ...r, fin: e.target.value }))
+              }
+              className="mt-1 h-10"
+            />
+          </div>
+        </>
+      )}
+
+      {/* Filtro Tipo */}
+      <div>
+        <Label htmlFor="filtro-tipo" className="text-sm">Tipo de Mención</Label>
+        <Input
+          id="filtro-tipo"
+          value={filtroTipo}
+          onChange={(e) => setFiltroTipo(e.target.value)}
+          placeholder="Ej: mencion, cintillo (coincidencia parcial)"
+          className="mt-1"
+        />
+      </div>
+
+      {/* Filtro Cliente */}
+      <div>
+        <Label htmlFor="filtro-cliente" className="text-sm">Cliente</Label>
+        <Input
+          id="filtro-cliente"
+          value={filtroCliente}
+          onChange={(e) => setFiltroCliente(e.target.value)}
+          placeholder="Filtrar por cliente..."
+          className="mt-1"
+        />
+      </div>
+    </div>
+  </CardContent>
+</Card>
+
 
                 {/* Tabla de registros */}
                 <Card>
@@ -966,5 +1020,6 @@ export default function ProgramacionPage() {
         />
       </div>
     </div>
+    </RouteGuard>
   );
 }

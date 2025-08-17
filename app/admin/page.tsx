@@ -222,6 +222,7 @@ export default function AdminPage() {
   };
 
   return (
+    <RouteGuard requiredRole={"admin"}>
     <div className="min-h-screen bg-gray-50 pt-16">
       <Navbar title="Panel de Administrador" />
       <div className="container mx-auto p-4 sm:p-6 space-y-6">
@@ -433,7 +434,6 @@ export default function AdminPage() {
                           <SelectTrigger className="mt-1 w-full">
                             <SelectValue />
                           </SelectTrigger>
-                          {/* 👇 evita desbordes del menú */}
                           <SelectContent
                             position="popper"
                             className="w-[--radix-select-trigger-width] max-w-[calc(100vw-2rem)]"
@@ -705,5 +705,6 @@ export default function AdminPage() {
         />
       </div>
     </div>
+    </RouteGuard>
   );
 }
