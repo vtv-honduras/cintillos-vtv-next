@@ -491,6 +491,7 @@ export default function ProgramacionPage() {
                         <Table>
                           <TableHeader>
                             <TableRow>
+                               <TableHead className="text-sm">ID</TableHead>
                               <TableHead className="text-sm">Fecha</TableHead>
                               <TableHead className="text-sm">Hora</TableHead>
                               <TableHead className="text-sm">Cliente</TableHead>
@@ -504,6 +505,9 @@ export default function ProgramacionPage() {
                           <TableBody>
                             {registrosFiltrados.map((mencion) => (
                               <TableRow key={mencion.id}>
+                                 <TableCell className="text-sm">
+                                  {mencion.id}
+                                </TableCell>
                                 <TableCell className="text-sm">
                                   {mencion.fecha}
                                 </TableCell>
