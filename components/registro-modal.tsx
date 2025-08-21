@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConfirmationModal } from "@/components/confirmation-modal";
-import { Plus, Calendar, Clock, X, Loader2 } from "lucide-react";
+import { Plus, X, Loader2 } from "lucide-react";
 
 import type { Mencion, TipoMencion, Canal, Cliente } from "@/lib/data";
 import {
@@ -112,31 +112,44 @@ export function RegistroModal({
   };
 
   // cargar datos solo cuando abre el modal
-  useEffect(() => {
-    if (!isOpen) return;
-    const load = async () => {
-      try {
-        setLoadingTipos(true);
-        setLoadingCanales(true);
-        setLoadingClientes(true);
-        const [tiposData, canalesData, clientesData] = await Promise.all([
-          tiposMencionService.getAll(),
-          canalesService.getAll(),
-          clientesService.getAll(),
-        ]);
-        setTiposMenciones(tiposData);
-        setCanales(canalesData);
-        setClientesActivos(clientesData.filter(esClienteActivo));
-      } catch (e) {
-        console.error("Error cargando datos para el modal:", e);
-      } finally {
-        setLoadingTipos(false);
-        setLoadingCanales(false);
-        setLoadingClientes(false);
-      }
-    };
-    load();
-  }, [isOpen]);
+useEffect(() => {
+  if (!isOpen) return;
+
+  // setear fecha y hora actuales al abrir modal
+  const hoy = new Date();
+  const fechaActual = hoy.toISOString().split("T")[0];
+  const horaActual = hoy.toTimeString().slice(0, 5);
+
+  setFormulario((f) => ({
+    ...f,
+    fecha: fechaActual,
+    hora: horaActual,
+  }));
+
+  const load = async () => {
+    try {
+      setLoadingTipos(true);
+      setLoadingCanales(true);
+      setLoadingClientes(true);
+      const [tiposData, canalesData, clientesData] = await Promise.all([
+        tiposMencionService.getAll(),
+        canalesService.getAll(),
+        clientesService.getAll(),
+      ]);
+      setTiposMenciones(tiposData);
+      setCanales(canalesData);
+      setClientesActivos(clientesData.filter(esClienteActivo));
+    } catch (e) {
+      console.error("Error cargando datos para el modal:", e);
+    } finally {
+      setLoadingTipos(false);
+      setLoadingCanales(false);
+      setLoadingClientes(false);
+    }
+  };
+  load();
+}, [isOpen]);
+
 
   // UI handlers
   const toggleTipo = (tipoNombre: string) => {
