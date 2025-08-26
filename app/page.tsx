@@ -93,8 +93,6 @@ export default function LoginPage() {
       if (!authenticated) {
         if (disabled) {
           setError(message ?? "Tu usuario está desactivado. Contacta a TI.")
-        } else if (firstInit) {
-          setError("Te enviamos un correo para verificar tu cuenta. Revisa tu bandeja.")
         } else {
           setError(message ?? "No se pudo iniciar sesión. Verifica tus credenciales.")
         }
