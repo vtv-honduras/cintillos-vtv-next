@@ -247,8 +247,6 @@ export const inicializarDatosPorDefecto = async () => {
       await canalesService.create({ nombre: "VTV Plus" })
       await canalesService.create({ nombre: "ANTV" })
     }
-
-    console.log("Datos por defecto inicializados correctamente")
   } catch (error) {
     console.error("Error inicializando datos por defecto:", error)
   }

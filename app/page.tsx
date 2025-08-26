@@ -10,7 +10,6 @@ import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import Image from "next/image"
 
-// servicios centralizados
 import {
   login as loginService,
   checkActiveSession,
@@ -107,6 +106,7 @@ export default function LoginPage() {
       }
 
       const userData = persistUser(sesion)
+
       router.push(mapRoleToPath(userData.role))
     } catch (err) {
       console.error(err)

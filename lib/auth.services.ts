@@ -46,8 +46,6 @@ const login = async (email: string, password: string): Promise<LoginResult> => {
           "Tu usuario está desactivado. Por favor, contacta al equipo de TI.",
       };
     }
-
-    console.log("Inicio de sesión exitoso");
     return { authenticated: true, firstInit: false };
   } catch (error: any) {
    return mapAuthError(error);
@@ -57,13 +55,10 @@ const login = async (email: string, password: string): Promise<LoginResult> => {
 const forgotPassword = async (email: string) => {
   try {
     if (!email) {
-      console.log("Por favor, ingresa tu correo electrónico.");
       return;
     }
     await sendPasswordResetEmail(auth, email);
-    console.log("Se ha enviado un enlace para restablecer tu contraseña a tu correo electrónico.");
   } catch (error: any) {
-    console.log("Error al enviar el correo de recuperación:", error.message);
   }
 };
 
@@ -85,13 +80,12 @@ const checkActiveSession = () => {
           uid: user.uid ?? null,
           authenticated: true,
           rol: {
-            rol: idTokenResult.claims.rol,
+            rol: idTokenResult.claims.role,
             rol_id: idTokenResult.claims.rol_id,
           },
           activo: Boolean(idTokenResult.claims.activo),
         });
       } else {
-        console.log("No hay sesión activa.");
         resolve({
           email: "",
           nombre: "",
@@ -112,10 +106,8 @@ const logout = async () => {
       localStorage.removeItem("init_login");
     }
     await signOut(auth);
-    console.log("Sesión cerrada. Nos vemos pronto!");
     return { success: true };
   } catch (error: any) {
-    console.log("Error al cerrar sesión:", error.message);
     return { success: false, error: error.message };
   }
 };
