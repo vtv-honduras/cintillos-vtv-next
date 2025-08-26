@@ -24,7 +24,7 @@ const login = async (email: string, password: string): Promise<LoginResult> => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    if (!user.emailVerified) {
+   { /*if (!user.emailVerified) {
       await forgotPassword(email);
       await logout();
       return {
@@ -32,7 +32,7 @@ const login = async (email: string, password: string): Promise<LoginResult> => {
         firstInit: true,
         message: "Te enviamos un correo para verificar tu cuenta.",
       };
-    }
+    }*/}
     await user.getIdToken(true);
     const idTokenResult = await getIdTokenResult(user);
 
