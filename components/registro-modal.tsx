@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConfirmationModal } from "@/components/confirmation-modal";
-import { Plus, X, Loader2 } from "lucide-react";
+import { Plus, X, Loader2, PencilLine } from "lucide-react";
 
 import type { Mencion, TipoMencion, Canal, Cliente } from "@/lib/data";
 import {
@@ -33,7 +33,8 @@ import {
 interface RegistroModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onRegistroExitoso: () => void;
+  onRegistroExitoso: () => void; // úsalo también para “edición exitosa”
+  mencion?: Mencion | null;       // <<--- si viene, entra en modo edición
 }
 
 type NuevaMencionPayload = {
@@ -44,14 +45,17 @@ type NuevaMencionPayload = {
   hora: string;
   master: string;
   user_id: string | null;
-  fechaCreacion: string;
+  fechaCreacion?: string; // solo en create
 };
 
 export function RegistroModal({
   isOpen,
   onClose,
   onRegistroExitoso,
+  mencion = null,
 }: RegistroModalProps) {
+  const isEditing = !!mencion;
+
   // datos remotos
   const [tiposMenciones, setTiposMenciones] = useState<TipoMencion[]>([]);
   const [canales, setCanales] = useState<Canal[]>([]);
@@ -79,7 +83,7 @@ export function RegistroModal({
     onConfirm: async () => {},
   });
 
-  // Usuario actual desde localStorage (esperamos un JSON con { uid, name, ... })
+  // Usuario actual
   const getUsuarioActual = () => {
     if (typeof window === "undefined")
       return { name: "Usuario", uid: null as string | null };
@@ -87,7 +91,6 @@ export function RegistroModal({
       const raw = localStorage.getItem("user");
       if (!raw) return { name: "Usuario", uid: null as string | null };
       const parsed = JSON.parse(raw);
-      // soporta posibles claves: name/nombre, uid/id
       const name = parsed?.name ?? parsed?.nombre ?? "Usuario";
       const uid = parsed?.uid ?? parsed?.id ?? null;
       return { name, uid };
@@ -105,42 +108,54 @@ export function RegistroModal({
     return fin >= hoy;
   };
 
-  // cargar datos solo cuando abre el modal
-useEffect(() => {
-  if (!isOpen) return;
+  // Prefill cuando abre el modal
+  useEffect(() => {
+    if (!isOpen) return;
 
-  // setear fecha y hora actuales al abrir modal
-
-  setFormulario((f) => ({
-    ...f,
-    fecha: "",
-    hora: "",
-  }));
-
-  const load = async () => {
-    try {
-      setLoadingTipos(true);
-      setLoadingCanales(true);
-      setLoadingClientes(true);
-      const [tiposData, canalesData, clientesData] = await Promise.all([
-        tiposMencionService.getAll(),
-        canalesService.getAll(),
-        clientesService.getAll(),
-      ]);
-      setTiposMenciones(tiposData);
-      setCanales(canalesData);
-      setClientesActivos(clientesData.filter(esClienteActivo));
-    } catch (e) {
-      console.error("Error cargando datos para el modal:", e);
-    } finally {
-      setLoadingTipos(false);
-      setLoadingCanales(false);
-      setLoadingClientes(false);
+    const load = async () => {
+      try {
+        setLoadingTipos(true);
+        setLoadingCanales(true);
+        setLoadingClientes(true);
+        const [tiposData, canalesData, clientesData] = await Promise.all([
+          tiposMencionService.getAll(),
+          canalesService.getAll(),
+          clientesService.getAll(),
+        ]);
+        setTiposMenciones(tiposData);
+        setCanales(canalesData);
+        setClientesActivos(clientesData.filter(esClienteActivo));
+      } catch (e) {
+        console.error("Error cargando datos para el modal:", e);
+      } finally {
+        setLoadingTipos(false);
+        setLoadingCanales(false);
+        setLoadingClientes(false);
+      }
+    };
+    if (isEditing && mencion) {
+      setFormulario({
+        cliente: mencion.cliente ?? "",
+        tiposSeleccionados: (mencion.tipoMencion || "")
+          .split("+")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        canalSeleccionado: mencion.canal ?? "",
+        fecha: mencion.fecha ?? "",
+        hora: mencion.hora ?? "",
+      });
+    } else {
+      setFormulario({
+        cliente: "",
+        tiposSeleccionados: [],
+        canalSeleccionado: "",
+        fecha: "",
+        hora: new Date().toTimeString().slice(0, 5),
+      });
     }
-  };
-  load();
-}, [isOpen]);
 
+    load();
+  }, [isOpen, isEditing, mencion]);
 
   // UI handlers
   const toggleTipo = (tipoNombre: string) => {
@@ -186,12 +201,14 @@ useEffect(() => {
     onClose();
   };
 
-  // registro
-  const registrarMencion = () => {
+  // Crear o Editar según modo
+  const submit = () => {
     if (
       !formulario.cliente.trim() ||
       formulario.tiposSeleccionados.length === 0 ||
-      !formulario.canalSeleccionado
+      !formulario.canalSeleccionado ||
+      formulario.fecha.trim() === "" ||
+      formulario.hora.trim() === ""
     ) {
       return;
     }
@@ -199,40 +216,70 @@ useEffect(() => {
     const tiposConcatenados = formulario.tiposSeleccionados.join(" + ");
     const descripcion = `Cliente: ${formulario.cliente}, Tipos: ${tiposConcatenados}, Canal: ${formulario.canalSeleccionado}`;
 
-    mostrarConfirmacion(
-      "Confirmar registro de mención",
-      `${descripcion}. Una vez registrado no podrás modificarlo.`,
-      async () => {
-        try {
-          setSaving(true);
-          const { name, uid } = getUsuarioActual();
-
-          const payload: NuevaMencionPayload = {
-            cliente: formulario.cliente,
-            tipoMencion: tiposConcatenados,
-            canal: formulario.canalSeleccionado,
-            fecha: formulario.fecha,
-            hora: formulario.hora,
-            master: name, // 👈 nombre visible del registrante
-            user_id: uid, // 👈 uid del usuario
-            fechaCreacion: new Date().toISOString(),
-          };
-
-          await mencionesService.create(
-            payload as unknown as Omit<Mencion, "id">
-          );
-          limpiarFormulario();
-          onRegistroExitoso();
-          onClose();
-        } catch (e) {
-          console.error("Error registrando mención:", e);
-          alert("Error al registrar la mención");
-        } finally {
-          setSaving(false);
-          cerrarModalConfirmacion();
+    if (isEditing && mencion) {
+      // EDITAR
+      mostrarConfirmacion(
+        "Guardar cambios",
+        `${descripcion}. ¿Deseas actualizar esta mención?`,
+        async () => {
+          try {
+            setSaving(true);
+            await mencionesService.update(mencion.id, {
+              cliente: formulario.cliente,
+              tipoMencion: tiposConcatenados,
+              canal: formulario.canalSeleccionado,
+              fecha: formulario.fecha,
+              hora: formulario.hora,
+            });
+            onRegistroExitoso();
+            onClose();
+          } catch (e) {
+            console.error("Error actualizando mención:", e);
+            alert("Error al actualizar la mención");
+          } finally {
+            setSaving(false);
+            cerrarModalConfirmacion();
+          }
         }
-      }
-    );
+      );
+    } else {
+      // CREAR
+      mostrarConfirmacion(
+        "Confirmar registro de mención",
+        `${descripcion}. Una vez registrado no podrás modificarlo.`,
+        async () => {
+          try {
+            setSaving(true);
+            const { name, uid } = getUsuarioActual();
+
+            const payload: NuevaMencionPayload = {
+              cliente: formulario.cliente,
+              tipoMencion: tiposConcatenados,
+              canal: formulario.canalSeleccionado,
+              fecha: formulario.fecha,
+              hora: formulario.hora,
+              master: name,
+              user_id: uid,
+              // si tu create usa serverTimestamp en el servicio, no necesitas esto:
+              // fechaCreacion: new Date().toISOString(),
+            };
+
+            await mencionesService.create(
+              payload as unknown as Omit<Mencion, "id">
+            );
+            limpiarFormulario();
+            onRegistroExitoso();
+            onClose();
+          } catch (e) {
+            console.error("Error registrando mención:", e);
+            alert("Error al registrar la mención");
+          } finally {
+            setSaving(false);
+            cerrarModalConfirmacion();
+          }
+        }
+      );
+    }
   };
 
   const disabledSubmit =
@@ -242,7 +289,7 @@ useEffect(() => {
     loadingClientes ||
     !formulario.cliente.trim() ||
     formulario.tiposSeleccionados.length === 0 ||
-    !formulario.canalSeleccionado||
+    !formulario.canalSeleccionado ||
     formulario.fecha.trim() === "" ||
     formulario.hora.trim() === "";
 
@@ -252,11 +299,22 @@ useEffect(() => {
         <DialogContent className="w-[90vw] max-w-2xl max-h-[90vh] overflow-y-auto mx-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
-              <Plus className="h-5 w-5" />
-              Registrar Nueva Mención
+              {isEditing ? (
+                <>
+                  <PencilLine className="h-5 w-5" />
+                  Editar Mención
+                </>
+              ) : (
+                <>
+                  <Plus className="h-5 w-5" />
+                  Registrar Nueva Mención
+                </>
+              )}
             </DialogTitle>
             <DialogDescription className="text-sm">
-              Completa todos los campos para registrar una nueva mención
+              {isEditing
+                ? "Actualiza los campos necesarios y guarda los cambios."
+                : "Completa todos los campos para registrar una nueva mención."}
             </DialogDescription>
           </DialogHeader>
 
@@ -414,16 +472,23 @@ useEffect(() => {
 
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <Button
-                onClick={registrarMencion}
+                onClick={submit}
                 disabled={disabledSubmit}
                 className="flex-1 h-11 text-sm"
               >
                 {saving ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : isEditing ? (
+                  <>
+                    <PencilLine className="h-4 w-4 mr-2" />
+                    Guardar cambios
+                  </>
                 ) : (
-                  <Plus className="h-4 w-4 mr-2" />
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Registrar Mención
+                  </>
                 )}
-                Registrar Mención
               </Button>
               <Button
                 variant="outline"

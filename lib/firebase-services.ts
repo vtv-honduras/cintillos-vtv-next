@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, } from "firebase/firestore"
 import { db } from "./firebase"
 import type { Cliente, TipoMencion, Canal, Mencion } from "./data"
 
@@ -137,46 +137,80 @@ export const canalesService = {
 export const mencionesService = {
   async getAll(): Promise<Mencion[]> {
     try {
-      const q = query(collection(db, "menciones"), orderBy("fechaCreacion", "desc"))
-      const querySnapshot = await getDocs(q)
-      return querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Mencion[]
+      const q = query(
+        collection(db, "menciones"),
+        orderBy("fechaCreacion", "desc")
+      );
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<Mencion, "id">),
+      }));
     } catch (error) {
-      console.error("Error obteniendo menciones:", error)
-      return []
+      console.error("Error obteniendo menciones:", error);
+      return [];
     }
   },
 
   async getByUser(usuario: string): Promise<Mencion[]> {
     try {
-      const q = query(collection(db, "menciones"), where("usuario", "==", usuario), orderBy("fechaCreacion", "desc"))
-      const querySnapshot = await getDocs(q)
-      return querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Mencion[]
+      const q = query(
+        collection(db, "menciones"),
+        where("usuario", "==", usuario),
+        orderBy("fechaCreacion", "desc")
+      );
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<Mencion, "id">),
+      }));
     } catch (error) {
-      console.error("Error obteniendo menciones del usuario:", error)
-      return []
+      console.error("Error obteniendo menciones del usuario:", error);
+      return [];
     }
   },
 
-  async create(mencion: Omit<Mencion, "id">): Promise<string> {
+  async create(mencion: Omit<Mencion, "id" | "fechaCreacion">): Promise<string> {
     try {
-      const mencionConFecha = {
+      const payload = {
         ...mencion,
-        fechaCreacion: new Date().toISOString(),
-      }
-      const docRef = await addDoc(collection(db, "menciones"), mencionConFecha)
-      return docRef.id
+        // serverTimestamp para consistencia en ordenamiento
+        fechaCreacion: serverTimestamp(),
+      };
+      const docRef = await addDoc(collection(db, "menciones"), payload);
+      return docRef.id;
     } catch (error) {
-      console.error("Error creando mención:", error)
-      throw error
+      console.error("Error creando mención:", error);
+      throw error;
     }
   },
-}
+
+  // >>> NUEVO: actualizar parcialmente una mención
+  async update(id: string, data: Partial<Omit<Mencion, "id" | "fechaCreacion">>): Promise<void> {
+    try {
+      const ref = doc(db, "menciones", id);
+      await updateDoc(ref, {
+        ...data,
+        // opcional: marca de última edición si la quieres
+        ultimaEdicion: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("Error actualizando mención:", error);
+      throw error;
+    }
+  },
+
+  // >>> NUEVO: eliminar una mención
+  async delete(id: string): Promise<void> {
+    try {
+      const ref = doc(db, "menciones", id);
+      await deleteDoc(ref);
+    } catch (error) {
+      console.error("Error eliminando mención:", error);
+      throw error;
+    }
+  },
+};
 
 // Función para inicializar datos por defecto
 export const inicializarDatosPorDefecto = async () => {
