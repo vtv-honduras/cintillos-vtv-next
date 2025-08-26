@@ -10,13 +10,13 @@ import { getToken, checkActiveSession } from "@/lib/auth.services";
 interface RouteGuardProps {
   children: React.ReactNode;
   requiredRole?: string | string[];
-  redirectTo?: string; // login
+  redirectTo?: string;
 }
 
 export function RouteGuard({
   children,
   requiredRole,
-  redirectTo = "/auth/login",
+  redirectTo = "/login",
 }: RouteGuardProps) {
   const { user, loading } = useAuth();
   const router = useRouter();

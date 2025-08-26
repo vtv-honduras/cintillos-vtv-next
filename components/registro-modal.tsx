@@ -68,13 +68,7 @@ export function RegistroModal({
     cliente: "",
     tiposSeleccionados: [] as string[],
     canalSeleccionado: "",
-    fecha: (() => {
-      const hoy = new Date();
-      return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(
-        2,
-        "0"
-      )}-${String(hoy.getDate()).padStart(2, "0")}`;
-    })(),
+    fecha: "",
     hora: new Date().toTimeString().slice(0, 5),
   });
 
@@ -116,14 +110,11 @@ useEffect(() => {
   if (!isOpen) return;
 
   // setear fecha y hora actuales al abrir modal
-  const hoy = new Date();
-  const fechaActual = hoy.toISOString().split("T")[0];
-  const horaActual = hoy.toTimeString().slice(0, 5);
 
   setFormulario((f) => ({
     ...f,
-    fecha: fechaActual,
-    hora: horaActual,
+    fecha: "",
+    hora: "",
   }));
 
   const load = async () => {
@@ -251,7 +242,9 @@ useEffect(() => {
     loadingClientes ||
     !formulario.cliente.trim() ||
     formulario.tiposSeleccionados.length === 0 ||
-    !formulario.canalSeleccionado;
+    !formulario.canalSeleccionado||
+    formulario.fecha.trim() === "" ||
+    formulario.hora.trim() === "";
 
   return (
     <>

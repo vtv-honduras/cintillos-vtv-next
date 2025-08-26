@@ -471,7 +471,7 @@ export default function MasterPage() {
 
         <button
           onClick={() => setModalAbierta(true)}
-          className="fixed bottom-6 right-6 w-12 h-12 sm:w-14 sm:h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-50"
+          className="fixed bottom-6 right-6 w-12 h-12 sm:w-14 sm:h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-50 cursor-pointer"
           aria-label="Registrar nueva mención"
         >
           <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
