@@ -16,7 +16,7 @@ interface RouteGuardProps {
 export function RouteGuard({
   children,
   requiredRole,
-  redirectTo = "/login",
+  redirectTo = "/",
 }: RouteGuardProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
